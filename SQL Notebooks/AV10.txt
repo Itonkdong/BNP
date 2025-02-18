@@ -1,0 +1,96 @@
+1. 
+CREATE TRIGGER TR_update_department
+AFTER UPDATE OF dptID ON DEPARTMENT
+FOR EACH ROW
+BEGIN
+  UPDATE EMPLOYEE
+  SET dptID = NEW.dptID
+  WHERE dptID = OLD.dptID;
+END;
+
+
+MORA DA E SO AFTER UPDATE, NE RABOTI SO BEFORE
+2.
+CREATE TRIGGER Trigger2
+AFTER UPDATE OF location ON DEPARTMENT
+FOR EACH ROW
+WHEN NEW.[location] != UPPER(NEW.[location])
+BEGIN
+	UPDATE DEPARTMENT
+    SET location = upper(NEW.[location])
+    WHERE dptid = NEW.dptid;
+END;
+
+3.
+
+ALTER TABLE DEPARTMENT
+ADD COLUMN TotalSalary decimal DEFAULT 0
+
+with 
+salaryPerDepartment AS
+(
+SELECT e.dptID, sum(e.salary) as 'TotalSalary'
+from EMPLOYEE e
+GROUP by e.dptID
+)
+
+UPDATE DEPARTMENT
+set totalsalary = (
+  SELECT s.TotalSalary
+  from salaryPerDepartment s
+  WHERE DEPARTMENT.dptid = s.dptId)
+
+
+4.
+CREATE TRIGGER Employee_add
+AFTER INSERT on EMPLOYEE
+for EACH ROW
+BEGIN
+	UPDATE DEPARTMENT
+    SEt totalsalary = totalsalary + NEW.salary
+    WHERE dptid = NEW.dptID;
+END;
+
+
+CREATE TRIGGER Employee_update
+AFTER UPDATE of salary on EMPLOYEE
+for EACH ROW
+BEGIN
+	UPDATE DEPARTMENT
+    SEt totalsalary = totalsalary - OLD.salary + NEW.salary
+    WHERE dptid = NEW.dptID;
+END;
+
+
+CREATE TRIGGER Employee_move
+AFTER UPDATE of dptid on EMPLOYEE
+for EACH ROW
+BEGIN
+	UPDATE DEPARTMENT
+    SEt totalsalary = totalsalary - OLD.salary
+    WHERE dptid = OLD.dptID;
+    
+    UPDATE DEPARTMENT
+    SEt totalsalary = totalsalary + NEW.salary
+    WHERE dptid = NEW.dptID;
+END;
+
+
+CREATE TRIGGER Employee_delete
+AFTER DELETE on EMPLOYEE
+for EACH ROW
+BEGIN
+	UPDATE DEPARTMENT
+    SEt totalsalary = totalsalary - OLD.salary
+    WHERE dptid = OLD.dptID;
+END;
+
+5.
+
+CREATE TRIGGER Cascade_delete_deperment
+AFTER DELETE on DEPARTMENT
+for EACH ROW
+BEGIN
+	DELETE FROM EMPLOYEE
+    WHERE EMPLOYEE.dptID = OLD.dptID;
+END;

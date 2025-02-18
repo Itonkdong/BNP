@@ -1,0 +1,167 @@
+1.
+SELECT v.ime, v.prezime
+from Vraboten v
+where v.ID in 
+  (select t.ID_v
+  from Shalterski_rabotnik s join Transakcija_shalter t on t.ID_v = s.ID join Smetka s on (s.MBR_k = t.MBR_k and s.broj = t.broj)
+  WHERE t.tip = 'isplata' and t.suma > 1000 and s.valuta = 'EUR')
+ORDER BY v.ime
+
+ili
+
+select v.ime, v.prezime
+from  Shalterski_rabotnik sh join Vraboten v on sh.ID = v.ID join Transakcija_shalter t on t.ID_v = sh.ID join Smetka s on (s.MBR_k = t.MBR_k and s.broj = t.broj) 
+WHERE t.tip = 'isplata' and t.suma > 1000 and s.valuta = 'EUR'
+ORDER BY v.ime
+
+
+2.
+SELECT k.ime, k.prezime
+from  Transakcija_bankomat t join Smetka s on (s.MBR_k = t.MBR_k_s and s.broj = t.broj) JOIN Klient k on k.MBR_k = s.MBR_k
+WHERE t.suma > 400 and s.valuta = 'USD'
+ORDER BY k.ime
+
+3.
+
+
+WITH Result as ( 
+SELECT s.*
+from Smetka s join Transakcija_shalter ts on s.MBR_k = ts.MBR_k_s and s.broj = ts.broj
+WHERE s.valuta = 'MKD' and ts.tip = 'isplata' and ts.datum BETWEEN '2021-01-01' and '2021-12-31'
+
+INTERSECT
+
+SELECT s.*
+from Smetka s join Transakcija_bankomat tb on s.MBR_k = tb.MBR_k_s and s.broj = tb.broj
+WHERE s.valuta = 'MKD' and tb.datum BETWEEN '2021-01-01' and '2021-12-31')
+
+SELECT *
+FROM Result r
+ORDER BY r.broj
+
+4.
+
+SELECT k.*
+FROM Klient k JOIN Transakcija_bankomat tb on k.MBR_k = tb.MBR_k_s JOIN Smetka s on s.MBR_k = tb.MBR_k_s and s.broj = tb.broj
+WHERE s.valuta = 'EUR' and s.broj not in (
+    SELECT s.broj
+    FROM Klient k JOIN Transakcija_shalter ts on k.MBR_k = ts.MBR_k JOIN Smetka s on s.MBR_k = ts.MBR_k_s and s.broj = ts.broj
+)
+ORDER BY k.ime
+
+ili
+
+SELECT k.*
+FROM (Klient k JOIN Transakcija_bankomat tb on k.MBR_k = tb.MBR_k_s JOIN Smetka s on s.MBR_k = tb.MBR_k_s and s.broj = tb.broj ) left OUTER JOIN Transakcija_shalter ts
+on ts.MBR_k = k.MBR_k and ts.MBR_k_s = s.MBR_k and ts.broj = s.broj
+WHERE s.valuta = 'EUR' and ts.broj is NULL
+ORDER BY k.ime
+
+5.
+WITH 
+
+Report (S_ID,Datum,BrojTranskacii) as 
+(SELECT sr.ID, ts.datum, COUNT(*)
+FROM Shalterski_rabotnik sr JOIN Transakcija_shalter ts on sr.ID = ts.ID_v
+GROUP BY sr.ID, ts.datum),
+
+MaxReport (S_ID, MaxTransakcii) as
+(SELECT r.S_ID, max(r.BrojTranskacii)
+FROM Report r
+GROUP BY r.S_ID)
+
+SELECT r.*
+FROM Report r join MaxReport mr on r.S_ID = mr.S_ID and r.BrojTranskacii = mr.MaxTransakcii
+ORDER BY r.S_ID
+
+6.
+
+with Summary_Shalter as  
+(SELECT s.MBR_k, s.broj, avg(ts.suma) as ts_avg
+FROM Smetka s JOIN Transakcija_shalter ts on s.MBR_k = ts.MBR_k_s and s.broj = ts.broj
+WHERE (s.valuta = 'EUR' or s.valuta = 'USD') and ts.tip = 'isplata' and (ts.datum BETWEEN '2021-01-01' and '2021-12-31')
+GROUP By s.MBR_k, s.broj),
+Summary_Bankomat as 
+(SELECT s.MBR_k, s.broj, avg(tb.suma) as tb_avg
+FROM Smetka s JOIN Transakcija_bankomat tb on s.MBR_k = tb.MBR_k_s and s.broj = tb.broj
+WHERE (s.valuta = 'EUR' or s.valuta = 'USD')  and (tb.datum BETWEEN '2021-01-01' and '2021-12-31')
+GROUP By s.MBR_k, s.broj)
+
+SELECT ss.*, sb.tb_avg
+FROM Summary_Shalter ss JOIN Summary_Bankomat sb on ss.MBR_k = sb.MBR_k and ss.broj = sb.broj
+ORDER BY ss.broj
+
+ili
+
+SELECT s.MBR_k, s.broj, avg(ts.suma) as ts_avg , avg(tb.suma) as tb_avg
+FROM Smetka s JOIN Transakcija_shalter ts on s.MBR_k = ts.MBR_k_s and s.broj = ts.broj JOIN Transakcija_bankomat tb on s.MBR_k = tb.MBR_k_s and s.broj = tb.broj
+WHERE (s.valuta = 'EUR' or s.valuta = 'USD') and ts.tip = 'isplata' and (ts.datum BETWEEN '2021-01-01' and '2021-12-31') and (tb.datum BETWEEN '2021-01-01' and '2021-12-31')
+GROUP By s.MBR_k, s.broj
+ORDER BY s.broj
+
+verzija 2
+
+with Summary_Shalter as  
+(SELECT s.MBR_k, s.broj, avg(ts.suma) as ts_avg
+FROM Smetka s JOIN Transakcija_shalter ts on s.MBR_k = ts.MBR_k_s and s.broj = ts.broj
+WHERE (s.valuta = 'EUR' or s.valuta = 'USD') and ts.tip = 'isplata' and (ts.datum BETWEEN '2021-01-01' and '2021-12-31')
+GROUP By s.MBR_k, s.broj),
+Summary_Bankomat as 
+(SELECT s.MBR_k, s.broj, avg(tb.suma) as tb_avg
+FROM Smetka s JOIN Transakcija_bankomat tb on s.MBR_k = tb.MBR_k_s and s.broj = tb.broj
+WHERE (s.valuta = 'EUR' or s.valuta = 'USD')  and (tb.datum BETWEEN '2021-01-01' and '2021-12-31')
+GROUP By s.MBR_k, s.broj)
+
+SELECT IFNULL(ss.MBR_K, sb.MBR_K) as MBR_K, IFNULL(ss.broj, sb.broj) as Broj, IFNULL(ss.ts_avg,0) as ts_avg, IFNULL(sb.tb_avg, 0) as tb_avg
+FROM Summary_Shalter ss FULL OUTER JOIN Summary_Bankomat sb on ss.MBR_k = sb.MBR_k and ss.broj = sb.broj
+ORDER BY Broj
+
+=============================================================================================================================================================================
+
+DOPOLNITELNI PON:
+
+-- 7) За секој шалтерски работник број на трансакции кои ги има направено на сметки кои учествувале само во шалтерска трансакција
+SELECT sr.ID, COUNT(*) as broj_shalterski_transkacii
+FROM Smetka s JOIN Transakcija_shalter ts on s.MBR_k = ts.MBR_k_s and s.broj = ts.broj JOIN Shalterski_rabotnik sr on sr.ID = ts.ID_v
+WHERE (s.MBR_k,s.broj) not in (
+		SELECT s1.MBR_k,s1.broj
+  		FROM Smetka s1 JOIN Transakcija_bankomat tb on s1.MBR_k = tb.MBR_k_s and s1.broj = tb.broj
+)
+GROUP BY sr.ID
+
+
+ILI
+
+WITH Samo_shlater as 
+(SELECT s.*
+FROM Smetka s JOIN Transakcija_shalter ts on s.MBR_k = ts.MBR_k_s and s.broj = ts.broj
+
+EXCEPT
+
+SELECT s1.*
+FROM Smetka s1 JOIN Transakcija_bankomat tb on s1.MBR_k = tb.MBR_k_s and s1.broj = tb.broj)
+
+SELECT sr.ID, COUNT(*)
+FROM Samo_shlater o JOIN Transakcija_shalter ts on o.MBR_k = ts.MBR_k and o.broj = ts.broj JOIN Shalterski_rabotnik sr on sr.ID = ts.ID_v
+GROUP BY sr.ID
+
+
+-- 8) Да се вратат податоци за шалтерските работници со завршени магистерски студии (MSc) 
+-- и плата поголема од 50000 кои учествувале во трансакции направени за сметки за кои постојат и шалтерски и банкоматски трансакции.
+with 
+
+Rich_masters as 
+(SELECT v.*
+FROM Shalterski_rabotnik sh JOIN Vraboten v on sh.ID = v.ID
+WHERE v.obrazovanie = 'MSc' and v.plata > 50000),
+
+Accounts_wth_both_transfers as 
+(SELECT *
+FROM Transakcija_shalter ts JOIN Smetka s on ts.MBR_k_s = s.MBR_k and ts.broj = s.broj JOIN Transakcija_bankomat tb on tb.MBR_k_s = s.MBR_k and tb.broj = s.broj)
+
+SELECT DISTINCT rm.*
+FROM Rich_masters rm JOIN Accounts_wth_both_transfers abt on rm.ID = abt.ID_v
+
+
+
+

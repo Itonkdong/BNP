@@ -1,0 +1,48 @@
+1.
+π Movies.Title (σ Genres.Name = 'Sci-Fi' ((Movies) ⨝ (Genres)))
+
+
+2.
+R = (Persons ⨝ PersonsMovies)
+R1 = (R ⨝ Movies)
+R3 = (sigma Movies.Runtime > 150 or Movies.Budget > 200000000 R1)
+pi Persons.Firstname, Persons.Lastname R3
+
+3.
+R = (Persons ⨝ PersonsMovies)
+R1 = (R ⨝ Movies)
+R3 = (sigma (Persons.Firstname = 'James' and Persons.Lastname = 'Cameron') and (Movies.Runtime < 120 or Movies.Runtime > 180) R1)
+R3
+
+4.
+MOVIE_GENRES=Movies ⨝ Genres
+MOVIE_SQL_IDS = (ρ Movie_ID<-Movies.SequelOf(pi Movies.SequelOf Movies))
+MOVIE_WITH_SQL = (MOVIE_GENRES ⨝ MOVIE_SQL_IDS)
+MOVIES_ACTION=σ Genres.Name = 'Action' (MOVIE_GENRES)
+FINAL_MOVIE_IDS=pi Movies.Movie_ID(MOVIES_ACTION) ∪ pi Movies.Movie_ID(MOVIE_WITH_SQL)
+Movies ⨝ FINAL_MOVIE_IDS
+
+5.
+MOVIE_GENRES=Movies ⨝ Genres
+MOVIE_SQL_IDS = (ρ Movie_ID<-Movies.SequelOf(pi Movies.SequelOf Movies))
+MOVIE_WITH_SQL = (MOVIE_GENRES ⨝ MOVIE_SQL_IDS)
+MOVIES_ACTION=σ Genres.Name = 'Action' (MOVIE_GENRES)
+FINAL_MOVIE_IDS=pi Movies.Movie_ID(MOVIES_ACTION) ∩ pi Movies.Movie_ID(MOVIE_WITH_SQL)
+Movies ⨝ FINAL_MOVIE_IDS
+
+6.
+MOVIE_GENRES=Movies ⨝ Genres
+Y = (ρ SO<-Movies.SequelOf(pi Movies.SequelOf Movies))
+M = (MOVIE_GENRES ⨝ (Movies.Movie_ID = Movies.SO) Y)
+MOVIES_WITH_SQL = ((pi Movies.Movie_ID M) ⨝ Movies)
+MOVIES_WITH_NO_SQL = (Movies - MOVIES_WITH_SQL)
+MOVIES_WITH_NO_SQL
+
+ii verzija na 6
+MOVIE_GENRES=Movies ⨝ Genres
+MOVIE_SQL_IDS = (ρ Movie_ID<-Movies.SequelOf(pi Movies.SequelOf Movies))
+MOVIE_WITH_SQL_GENRES = (MOVIE_GENRES ⨝ MOVIE_SQL_IDS)
+MOVIES_WITH_SQL_IDS = (pi Movies.Movie_ID(Movies ⨝ MOVIE_WITH_SQL_GENRES))
+MOVIE_WTIH_SQL = Movies ⨝ MOVIES_WITH_SQL_IDS
+MOVIE_WTIH_NO_SQL = (Movies - MOVIE_WTIH_SQL)
+MOVIE_WTIH_NO_SQL
